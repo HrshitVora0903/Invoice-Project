@@ -1,11 +1,17 @@
 import React, { useState } from "react";
 import { TextField, Button, Table, TableHead, TableRow, TableCell, TableBody, Box } from '@mui/material';
+import { useParams,useNavigate } from 'react-router-dom';
+
+import { useEffect } from "react"; // Make sure this is at the top if not already
+
 
 function InvoiceForm() {
-    const [invoiceNo, setInvoiceNo] = useState("");
-    const [partyName, setPartyName] = useState("");
-    const [gstNo, setGstNo] = useState("");
-    const [date, setDate] = useState(() => {
+    var { id } = useParams();
+    var navigate = useNavigate();
+    var [invoiceNo, setInvoiceNo] = useState("");
+    var [partyName, setPartyName] = useState("");
+    var [gstNo, setGstNo] = useState("");
+    var [date, setDate] = useState(() => {
         const d = new Date();
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -13,9 +19,43 @@ function InvoiceForm() {
         return `${year}-${month}-${day}`;
     });
 
-    const [items, setItems] = useState([
-        { itemName: "", qty: "", rate: "", amt: "", gstP: "", gstAmt: "", netAmt: "" }
+    var [items, setItems] = useState([
+        { itemName: "", qty: 0, rate: 0, amt: 0, gstP: 0, gstAmt: 0, netAmt: 0 }
     ]);
+
+
+    // Prefill for edit mode
+    useEffect(function () {
+        if (id) {
+            fetch("http://localhost:5000/api/invoice/" + id)
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    setInvoiceNo(data.invoice.invoiceNo);
+                    setPartyName(data.invoice.partyName);
+                    setGstNo(data.invoice.gstNo);
+                    setDate(data.invoice.date.split("T")[0]);
+                    setItems(data.items);
+                })
+                .catch(function (err) {
+                    console.error("Error fetching invoice:", err);
+                });
+        }
+    }, [id]);
+
+    // Only run this if creating a new invoice
+    useEffect(function () {
+        if (!id) {
+            fetch("http://localhost:5000/api/next-invoice-number")
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    setInvoiceNo(data.nextInvoiceNo);
+                })
+                .catch(function (err) {
+                    console.error("Failed to fetch invoice number", err);
+                });
+        }
+    }, [id]);
+
 
     const handleChange = (index, event) => {
         const { name, value } = event.target;
@@ -80,64 +120,115 @@ function InvoiceForm() {
     };
 
     const SubmitNote = (e) => {
-        e.preventDefault();
+    e.preventDefault();
 
-        
-        if (!partyName.trim()) {
-            alert("Please enter Party Name!");
-            return;
-        }
+    if (!partyName.trim()) {
+        alert("Please enter Party Name!");
+        return;
+    }
 
-        if (!invoiceNo.trim()) {
-            alert("Please enter Invoice Number!");
-            return;
-        }
+    if (!invoiceNo.trim()) {
+        alert("Please enter Invoice Number!");
+        return;
+    }
 
-        const gstRegex= /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-        if (!gstNo.trim()) {
-            alert("Please enter GST Number!");
-            return;
-        } else if( !gstRegex.test(gstNo.trim().toUpperCase())){
-            alert("Please enter a valid 15-digit GST Number!");
-            return;
-        }
+    const gstRegex = /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (!gstNo.trim()) {
+        alert("Please enter GST Number!");
+        return;
+    } else if (!gstRegex.test(gstNo.trim().toUpperCase())) {
+        alert("Please enter a valid 15-digit GST Number!");
+        return;
+    }
 
-        // You can also validate at least one item name
-        const emptyItem = items.find(item => !item.itemName.trim());
-        if (emptyItem) {
-            alert("Please enter Item Name!");
-            return;
-        }
+    const emptyItem = items.find((item) => !item.itemName.trim());
+    if (emptyItem) {
+        alert("Please enter Item Name!");
+        return;
+    }
 
-
-        const [y, m, d] = date.split("-");
-        const formattedDate = `${d}-${m}-${y}`;
-        const invoice = {
-            invoiceNo,
-            partyName,
-            gstNo,
-            date: formattedDate,
-            items
-        };
-        console.log(invoice);
+    const invoice = {
+        invoiceNo,
+        partyName,
+        gstNo,
+        date,
+        items
     };
+
+    if (id) {
+        // Editing mode — skip duplicate check
+        fetch(`http://localhost:5000/api/invoice/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(invoice)
+        })
+            .then((res) => res.json())
+            .then(() => {
+                alert("Invoice updated successfully!");
+                navigate("/");
+            })
+            .catch((err) => {
+                console.error("Error updating invoice:", err);
+                alert("Update failed");
+            });
+        return;
+    }
+
+    // Creating new invoice — check if invoice number exists
+    fetch(`http://localhost:5000/api/check-invoice/${invoiceNo}`)
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.exists) {
+                alert("Invoice number already exists. Please use a different one.");
+                return;
+            }
+
+            fetch("http://localhost:5000/api/invoices", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(invoice)
+            })
+                .then((res) => res.json())
+                .then(() => {
+                    alert("Invoice submitted successfully!");
+                    doReset();
+                    navigate("/");
+                })
+                .catch((err) => {
+                    console.error("Error submitting invoice:", err);
+                    alert("Error submitting invoice. Try again.");
+                });
+        })
+        .catch((err) => {
+            console.error("Error checking invoice number:", err);
+            alert("Could not verify invoice number. Try again.");
+        });
+};
+
 
     function CleanNote() {
         const confirmReset = window.confirm("Are you sure you want to reset the invoice?");
         if (!confirmReset) return;
 
+        doReset();
+    };
+
+    function doReset() {
         setInvoiceNo("");
         setPartyName("");
         setGstNo("");
+
         const d = new Date();
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
         setDate(`${year}-${month}-${day}`);
+
         setItems([
             { itemName: "", qty: "", rate: "", amt: "", gstP: "", gstAmt: "", netAmt: "" }
-        ])
-    };
+        ]);
+    }
+
 
     const handleDeleteItem = (indexToDelete) => {
         if (items.length === 1) {
@@ -234,11 +325,11 @@ function InvoiceForm() {
                         <TableCell>
                             {items.reduce((sum, item) => sum + (parseFloat(item.qty) || 0), 0)}
                         </TableCell>
-                        <TableCell /> {/* Empty Rate Total */}
+                        <TableCell />
                         <TableCell>
                             {items.reduce((sum, item) => sum + (parseFloat(item.amt) || 0), 0).toFixed(2)}
                         </TableCell>
-                        <TableCell /> {/* Empty GST% Total */}
+                        <TableCell />
                         <TableCell>
                             {items.reduce((sum, item) => sum + (parseFloat(item.gstAmt) || 0), 0).toFixed(2)}
                         </TableCell>
