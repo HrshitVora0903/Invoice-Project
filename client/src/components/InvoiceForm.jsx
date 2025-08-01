@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { TextField, Button, Table, TableHead, TableRow, TableCell, TableBody, Box } from '@mui/material';
-import { useParams,useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 import { useEffect } from "react"; // Make sure this is at the top if not already
 
@@ -8,6 +9,7 @@ import { useEffect } from "react"; // Make sure this is at the top if not alread
 function InvoiceForm() {
     var { id } = useParams();
     var navigate = useNavigate();
+
     var [invoiceNo, setInvoiceNo] = useState("");
     var [partyName, setPartyName] = useState("");
     var [gstNo, setGstNo] = useState("");
@@ -20,7 +22,7 @@ function InvoiceForm() {
     });
 
     var [items, setItems] = useState([
-        { itemName: "", qty: 0, rate: 0, amt: 0, gstP: 0, gstAmt: 0, netAmt: 0 }
+        { itemName: "", qty: "", rate: "", amt: "", gstP: "", gstAmt: "", netAmt: "" }
     ]);
 
 
@@ -61,51 +63,93 @@ function InvoiceForm() {
         const { name, value } = event.target;
         const updatedItems = [...items];
         updatedItems[index][name] = value;
-        setItems(updatedItems);
 
-        const qty = parseFloat(updatedItems[index].qty);
-        let rate = parseFloat(updatedItems[index].rate);
-        let gstP = parseFloat(updatedItems[index].gstP);
-        let amt = parseFloat(updatedItems[index].amt);
-        let netAmt = parseFloat(updatedItems[index].netAmt);
+        const item = updatedItems[index];
 
-        if (name === "amt") {
-            if (qty !== 0 && !isNaN(amt)) {
-                rate = amt / qty;
-                updatedItems[index].rate = rate.toFixed(2);
-            }
-        } else if (name === "qty" || name === "rate") {
-            if (!isNaN(qty) && !isNaN(rate)) {
+        // Parse numerical values
+        const qty = parseFloat(item.qty) || 0;
+        const rate = parseFloat(item.rate) || 0;
+        const gstP = parseFloat(item.gstP) || 0;
+
+        let amt = 0;
+        let gstAmt = 0;
+        let netAmt = 0;
+
+        // ✅ Handle itemName: Show 0.00s if nothing else is filled
+        if (name === "itemName") {
+            item.amt = "0.00";
+            item.gstAmt = "0.00";
+            item.netAmt = "0.00";
+        }
+
+        // ✅ Handle qty or rate change
+        if (name === "qty" || name === "rate") {
+            if (qty && rate) {
                 amt = qty * rate;
-                updatedItems[index].amt = amt.toFixed(2);
+                gstAmt = (amt * gstP) / 100;
+                netAmt = amt + gstAmt;
+
+                item.amt = amt.toFixed(2);
+                item.gstAmt = gstAmt.toFixed(2);
+                item.netAmt = netAmt.toFixed(2);
+            } else {
+                item.amt = "0.00";
+                item.gstAmt = "0.00";
+                item.netAmt = "0.00";
             }
         }
 
-        if (!isNaN(amt) && !isNaN(gstP)) {
-            const gstAmt = (amt * gstP) / 100;
-            updatedItems[index].gstAmt = gstAmt.toFixed(2);
-            netAmt = amt + gstAmt;
-            updatedItems[index].netAmt = netAmt.toFixed(2);
+        // ✅ Handle GST% change
+        if (name === "gstP") {
+            if (qty && rate) {
+                amt = qty * rate;
+                gstAmt = (amt * gstP) / 100;
+                netAmt = amt + gstAmt;
+
+                item.amt = amt.toFixed(2);
+                item.gstAmt = gstAmt.toFixed(2);
+                item.netAmt = netAmt.toFixed(2);
+            } else {
+                item.amt = "0.00";
+                item.gstAmt = "0.00";
+                item.netAmt = "0.00";
+            }
         }
 
+        // ✅ Handle manual amount change
+        if (name === "amt") {
+            const newAmt = parseFloat(value);
+            if (!isNaN(newAmt) && qty > 0) {
+                const newRate = newAmt / qty;
+                gstAmt = (newAmt * gstP) / 100;
+                netAmt = newAmt + gstAmt;
+
+                item.rate = newRate.toFixed(2);
+                item.amt = newAmt.toFixed(2);
+                item.gstAmt = gstAmt.toFixed(2);
+                item.netAmt = netAmt.toFixed(2);
+            }
+        }
+
+        // ✅ Handle manual net amount change
         if (name === "netAmt") {
-            updatedItems[index][name] = value;
-            setItems(updatedItems);
-
             const newNetAmt = parseFloat(value);
-            if (!isNaN(newNetAmt) && !isNaN(rate) && !isNaN(netAmt) && netAmt !== 0) {
-                const newRate = (newNetAmt * rate) / netAmt;
-                updatedItems[index].rate = newRate.toFixed(2);
+            if (!isNaN(newNetAmt) && qty > 0 && gstP >= 0) {
+                amt = (newNetAmt * 100) / (100 + gstP);
+                gstAmt = newNetAmt - amt;
+                const newRate = amt / qty;
 
-                const newAmt = qty * newRate;
-                updatedItems[index].amt = newAmt.toFixed(2);
-                const newGstAmt = (newAmt * gstP) / 100;
-                updatedItems[index].gstAmt = newGstAmt.toFixed(2);
+                item.rate = newRate.toFixed(2);
+                item.amt = amt.toFixed(2);
+                item.gstAmt = gstAmt.toFixed(2);
+                item.netAmt = newNetAmt.toFixed(2);
             }
         }
 
         setItems(updatedItems);
     };
+
+
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -116,94 +160,94 @@ function InvoiceForm() {
     };
 
     const handleAddedItem = () => {
-        setItems([...items, { itemName: "", qty: "", rate: "", amt: "", gstP: "", gstAmt: "", netAmt: "" }]);
+        setItems([...items, { itemName: "", qty: "", rate: "", amt: 0, gstP: "", gstAmt: 0, netAmt: 0 }]);
     };
 
     const SubmitNote = (e) => {
-    e.preventDefault();
+        e.preventDefault();
 
-    if (!partyName.trim()) {
-        alert("Please enter Party Name!");
-        return;
-    }
+        if (!partyName.trim()) {
+            toast.warning("Please enter Party Name!");
+            return;
+        }
 
-    if (!invoiceNo.trim()) {
-        alert("Please enter Invoice Number!");
-        return;
-    }
+        if (!invoiceNo.trim()) {
+            alert("Please enter Invoice Number!");
+            return;
+        }
 
-    const gstRegex = /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-    if (!gstNo.trim()) {
-        alert("Please enter GST Number!");
-        return;
-    } else if (!gstRegex.test(gstNo.trim().toUpperCase())) {
-        alert("Please enter a valid 15-digit GST Number!");
-        return;
-    }
+        const gstRegex = /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+        if (!gstNo.trim()) {
+            alert("Please enter GST Number!");
+            return;
+        } else if (!gstRegex.test(gstNo.trim().toUpperCase())) {
+            alert("Please enter a valid 15-digit GST Number!");
+            return;
+        }
 
-    const emptyItem = items.find((item) => !item.itemName.trim());
-    if (emptyItem) {
-        alert("Please enter Item Name!");
-        return;
-    }
+        const emptyItem = items.find((item) => !item.itemName.trim());
+        if (emptyItem) {
+            alert("Please enter Item Name!");
+            return;
+        }
 
-    const invoice = {
-        invoiceNo,
-        partyName,
-        gstNo,
-        date,
-        items
-    };
+        const invoice = {
+            invoiceNo,
+            partyName,
+            gstNo,
+            date,
+            items
+        };
 
-    if (id) {
-        // Editing mode — skip duplicate check
-        fetch(`http://localhost:5000/api/invoice/${id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(invoice)
-        })
-            .then((res) => res.json())
-            .then(() => {
-                alert("Invoice updated successfully!");
-                navigate("/");
-            })
-            .catch((err) => {
-                console.error("Error updating invoice:", err);
-                alert("Update failed");
-            });
-        return;
-    }
-
-    // Creating new invoice — check if invoice number exists
-    fetch(`http://localhost:5000/api/check-invoice/${invoiceNo}`)
-        .then((res) => res.json())
-        .then((data) => {
-            if (data.exists) {
-                alert("Invoice number already exists. Please use a different one.");
-                return;
-            }
-
-            fetch("http://localhost:5000/api/invoices", {
-                method: "POST",
+        if (id) {
+            // Editing mode — skip duplicate check
+            fetch(`http://localhost:5000/api/invoice/${id}`, {
+                method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(invoice)
             })
                 .then((res) => res.json())
                 .then(() => {
-                    alert("Invoice submitted successfully!");
-                    doReset();
+                    alert("Invoice updated successfully!");
                     navigate("/");
                 })
                 .catch((err) => {
-                    console.error("Error submitting invoice:", err);
-                    alert("Error submitting invoice. Try again.");
+                    console.error("Error updating invoice:", err);
+                    alert("Update failed");
                 });
-        })
-        .catch((err) => {
-            console.error("Error checking invoice number:", err);
-            alert("Could not verify invoice number. Try again.");
-        });
-};
+            return;
+        }
+
+        // Creating new invoice — check if invoice number exists
+        fetch(`http://localhost:5000/api/check-invoice/${invoiceNo}`)
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.exists) {
+                    alert("Invoice number already exists. Please use a different one.");
+                    return;
+                }
+
+                fetch("http://localhost:5000/api/invoices", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(invoice)
+                })
+                    .then((res) => res.json())
+                    .then(() => {
+                        alert("Invoice submitted successfully!");
+                        doReset();
+                        navigate("/");
+                    })
+                    .catch((err) => {
+                        console.error("Error submitting invoice:", err);
+                        alert("Error submitting invoice. Try again.");
+                    });
+            })
+            .catch((err) => {
+                console.error("Error checking invoice number:", err);
+                alert("Could not verify invoice number. Try again.");
+            });
+    };
 
 
     function CleanNote() {
@@ -214,7 +258,7 @@ function InvoiceForm() {
     };
 
     function doReset() {
-        setInvoiceNo("");
+        setInvoiceNo(invoiceNo);
         setPartyName("");
         setGstNo("");
 
@@ -225,7 +269,7 @@ function InvoiceForm() {
         setDate(`${year}-${month}-${day}`);
 
         setItems([
-            { itemName: "", qty: "", rate: "", amt: "", gstP: "", gstAmt: "", netAmt: "" }
+            { itemName: "", qty: "", rate: "", amt: 0, gstP: "", gstAmt: 0, netAmt: 0 }
         ]);
     }
 
@@ -288,6 +332,7 @@ function InvoiceForm() {
                                     variant="outlined"
                                     color="error"
                                     onClick={() => handleDeleteItem(index)}
+                                    disabled={items.length === 1}
                                 >
                                     Delete
                                 </Button>
@@ -321,7 +366,7 @@ function InvoiceForm() {
                     {/* Totals Row */}
                     <TableRow sx={{ backgroundColor: "#f0f0f0", fontWeight: "bold" }}>
                         <TableCell><b>Total:</b></TableCell>
-                        <TableCell>{items.length}</TableCell>
+                        <TableCell>{items.filter(item => item.itemName.trim() !== "").length}</TableCell>
                         <TableCell>
                             {items.reduce((sum, item) => sum + (parseFloat(item.qty) || 0), 0)}
                         </TableCell>

@@ -1,43 +1,44 @@
 
 import React, { useEffect, useState } from 'react';
 import { Button, Table, TableHead, TableRow, TableCell, TableBody, Box } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 function InvoiceList() {
     const [invoices, setInvoices] = useState([]);
     const navigate = useNavigate();
+    var location = useLocation();
 
     useEffect(() => {
         fetch("http://localhost:5000/api/allinvoices")
             .then(res => res.json())
             .then(data => setInvoices(data))
             .catch(err => console.error("Failed to fetch invoices:", err));
-    }, []);
+    }, [location]);
 
     function handleDelete(id) {
-    var confirmDelete = window.confirm("Are you sure you want to delete this invoice?");
-    if (confirmDelete) {
-        fetch("http://localhost:5000/api/invoice/" + id, {
-            method: "DELETE"
-        })
-        .then(function (res) {
-            if (!res.ok) {
-                throw new Error("Failed to delete invoice");
-            }
-            return res.json();
-        })
-        .then(function () {
-            var updatedInvoices = invoices.filter(function (inv) {
-                return inv.id !== id;
-            });
-            setInvoices(updatedInvoices);
-        })
-        .catch(function (err) {
-            console.error("Error deleting invoice:", err);
-            alert("Failed to delete invoice");
-        });
+        var confirmDelete = window.confirm("Are you sure you want to delete this invoice?");
+        if (confirmDelete) {
+            fetch("http://localhost:5000/api/invoice/" + id, {
+                method: "DELETE"
+            })
+                .then(function (res) {
+                    if (!res.ok) {
+                        throw new Error("Failed to delete invoice");
+                    }
+                    return res.json();
+                })
+                .then(function () {
+                    var updatedInvoices = invoices.filter(function (inv) {
+                        return inv.id !== id;
+                    });
+                    setInvoices(updatedInvoices);
+                })
+                .catch(function (err) {
+                    console.error("Error deleting invoice:", err);
+                    alert("Failed to delete invoice");
+                });
+        }
     }
-}
 
 
     return (
@@ -80,6 +81,7 @@ function InvoiceList() {
                                     size="small"
                                     color="error"
                                     onClick={function () { handleDelete(inv.id); }}
+                                    disabled={invoices.length === 1}
                                 >
                                     Delete
                                 </Button>

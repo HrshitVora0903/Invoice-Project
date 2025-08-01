@@ -27,7 +27,6 @@ app.use(cors());
 //var invoices =[];
 
 // get all invoices
-// Add this in server.js
 app.get("/api/allinvoices", (req, res) => {
   db.query("SELECT * FROM invoices ORDER BY id DESC", (err, results) => {
     if (err) {
@@ -38,111 +37,186 @@ app.get("/api/allinvoices", (req, res) => {
   });
 });
 
+//submit data to dataabase
+app.post("/api/invoices", function (req, res) {
+  const invoiceNo = req.body.invoiceNo;
+  const partyName = req.body.partyName;
+  const gstNo = req.body.gstNo;
+  const date = req.body.date;
+  const items = req.body.items;
 
+  // Insert into invoices table
+  const insertInvoiceQuery = `
+        INSERT INTO invoices (invoiceNo, partyName, gstNo, date, amt, gstAmt, netAmt)
+        VALUES (?, ?, ?, ?, 0, 0, 0)
+    `;
 
-// //POST new invoice(Memory  Version)
-// app.post('/invoices', function (req, res) {
-//   const newInvoice = req.body;
+  db.query(insertInvoiceQuery, [invoiceNo, partyName, gstNo, date], function (err, result) {
+    if (err) {
+      console.error("❌ Error inserting invoice:", err);
+      return res.status(500).json({ error: "Failed to create invoice" });
+    }
 
-//   // find used number
-//   var usedNumbers = invoices.map(function(inv) {
-//     return parseInt(inv.invoiceNo, 10);
-//   });
+    const invoiceId = result.insertId;
 
-//   //find maximum number
-//   var maxInvo = usedNumbers.length > 0 ? Math.max.apply(null, usedNumbers) : -1;
+    if (!items || items.length === 0) {
+      return res.json({ message: "Invoice created with no items." });
+    }
 
+    const insertItemQuery = `
+            INSERT INTO invoice_items 
+            (invoiceId, itemName, qty, rate, amt, gstP, gstAmt, netAmt) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
 
-//   if (newInvoice.invoiceNo && newInvoice.invoiceNo !== ""){
-//     var enteredNo = parseInt(newInvoice.invoiceNo,10);
+    var remaining = items.length;
+    var insertError = false;
 
-//     if(usedNumbers.includes(enteredNo)){
-//        return res.status(400).json({ message: "Invoice number already exists." });
-//     }
-//     newInvoice.invoiceNo= enteredNo.toString();
-//     } else {
-//       newInvoice.invoiceNo = (maxInvo + 1).toString();
-//     }
+    items.forEach(function (item) {
+      db.query(insertItemQuery, [
+        invoiceId,
+        item.itemName,
+        item.qty,
+        item.rate,
+        item.amt,
+        item.gstP,
+        item.gstAmt,
+        item.netAmt
+      ], function (err) {
+        if (err) {
+          console.error("❌ Error inserting item:", item, err);
+          insertError = true;
+        }
 
+        remaining--;
+        if (remaining === 0) {
+          if (insertError) {
+            return res.status(500).json({ error: "Some items failed to insert" });
+          }
 
-//   newInvoice.id = Date.now().toString();
-//   invoices.push(newInvoice);
-//   res.status(201).json({ message: 'Invoice added', invoice: newInvoice });
-// });
+          // Update totals in invoice
+          const updateTotalsQuery = `
+                        UPDATE invoices
+                        SET 
+                            amt = (SELECT IFNULL(SUM(amt), 0) FROM invoice_items WHERE invoiceId = ?),
+                            gstAmt = (SELECT IFNULL(SUM(gstAmt), 0) FROM invoice_items WHERE invoiceId = ?),
+                            netAmt = (
+                                (SELECT IFNULL(SUM(amt), 0) FROM invoice_items WHERE invoiceId = ?) +
+                                (SELECT IFNULL(SUM(gstAmt), 0) FROM invoice_items WHERE invoiceId = ?)
+                            )
+                        WHERE id = ?
+                    `;
+
+          db.query(updateTotalsQuery, [invoiceId, invoiceId, invoiceId, invoiceId, invoiceId], function (err) {
+            if (err) {
+              console.error("❌ Error updating totals:", err);
+              return res.status(500).json({ error: "Failed to update totals" });
+            }
+
+            res.json({ message: "Invoice created successfully!" });
+          });
+        }
+      });
+    });
+  });
+});
 
 
 app.put("/api/invoice/:id", (req, res) => {
-    const invoiceId = req.params.id;
-    const { invoiceNo, partyName, gstNo, date, items } = req.body;
+  const invoiceId = req.params.id;
+  const { invoiceNo, partyName, gstNo, date, items } = req.body;
 
-    console.log("🔄 Updating invoice:", invoiceId);
+  console.log("🔄 Updating invoice:", invoiceId);
 
-    // Update invoice
-    const updateInvoiceQuery = `
+  // Update invoice
+  const updateInvoiceQuery = `
         UPDATE invoices 
-        SET invoice_no = ?, party_name = ?, gst_no = ?, date = ? 
+        SET invoiceNo = ?, partyName = ?, gstNo = ?, date = ? 
         WHERE id = ?
     `;
 
-    db.query(updateInvoiceQuery, [invoiceNo, partyName, gstNo, date, invoiceId], (err, result) => {
-        if (err) {
-            console.error("❌ Error updating invoice:", err);
-            return res.status(500).json({ error: "Failed to update invoice" });
-        }
+  db.query(updateInvoiceQuery, [invoiceNo, partyName, gstNo, date, invoiceId], (err, result) => {
+    if (err) {
+      console.error("❌ Error updating invoice:", err);
+      return res.status(500).json({ error: "Failed to update invoice" });
+    }
 
-        console.log("✅ Invoice updated");
+    console.log("✅ Invoice updated");
 
-        // Delete old items
-        db.query("DELETE FROM invoice_items WHERE invoice_id = ?", [invoiceId], (err, result) => {
-            if (err) {
-                console.error("❌ Error deleting invoice items:", err);
-                return res.status(500).json({ error: "Failed to delete invoice items" });
-            }
+    // Delete old items
+    db.query("DELETE FROM invoice_items WHERE invoiceId = ?", [invoiceId], (err, result) => {
+      if (err) {
+        console.error("❌ Error deleting invoice items:", err);
+        return res.status(500).json({ error: "Failed to delete invoice items" });
+      }
 
-            console.log("🗑️ Old items deleted");
+      console.log("🗑️ Old items deleted");
 
-            if (!items || items.length === 0) {
-                // No new items to insert
-                return res.json({ message: "Invoice updated successfully with no items." });
-            }
+      if (!items || items.length === 0) {
+        // No new items to insert
+        return res.json({ message: "Invoice updated successfully with no items." });
+      }
 
-            // Insert new items — wait for all to finish before sending response
-            const insertQuery = `
+      // Insert new items — wait for all to finish before sending response
+      const insertQuery = `
                 INSERT INTO invoice_items 
-                (invoice_id, item_name, quantity, rate, amount, gst_percent, gst_amount) 
+                (invoiceId, itemName, qty, rate, amt, gstP, gstAmt) 
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             `;
 
-            let remaining = items.length;
-            let insertError = false;
+      let remaining = items.length;
+      let insertError = false;
 
-            items.forEach(item => {
-                db.query(insertQuery, [
-                    invoiceId,
-                    item.itemName,
-                    item.qty,
-                    item.rate,
-                    item.amt,
-                    item.gstP,
-                    item.gstAmt
-                ], (err, result) => {
-                    if (err) {
-                        console.error("❌ Error inserting item:", item, err);
-                        insertError = true;
-                    }
+      items.forEach(item => {
+        db.query(insertQuery, [
+          invoiceId,
+          item.itemName,
+          item.qty,
+          item.rate,
+          item.amt,
+          item.gstP,
+          item.gstAmt
+        ], (err, result) => {
+          if (err) {
+            console.error("❌ Error inserting item:", item, err);
+            insertError = true;
+          }
 
-                    remaining--;
-                    if (remaining === 0) {
-                        if (insertError) {
-                            return res.status(500).json({ error: "Some items failed to insert" });
-                        }
-                        console.log("✅ All items inserted");
-                        res.json({ message: "Invoice updated successfully!" });
-                    }
-                });
+          remaining--;
+          if (remaining === 0) {
+            if (insertError) {
+              return res.status(500).json({ error: "Some items failed to insert" });
+            }
+            console.log("✅ All items inserted");
+
+            // ✅ Now update totals after all items are inserted
+            const updateTotalsQuery = `
+                            UPDATE invoices
+                            SET 
+                                amt = (SELECT IFNULL(SUM(amt), 0) FROM invoice_items WHERE invoiceId = ?),
+                                gstAmt = (SELECT IFNULL(SUM(gstAmt), 0) FROM invoice_items WHERE invoiceId = ?),
+                                netAmt = (
+                                    (SELECT IFNULL(SUM(amt), 0) FROM invoice_items WHERE invoiceId = ?) +
+                                    (SELECT IFNULL(SUM(gstAmt), 0) FROM invoice_items WHERE invoiceId = ?)
+                                )
+                            WHERE id = ?
+                        `;
+
+            db.query(updateTotalsQuery, [invoiceId, invoiceId, invoiceId, invoiceId, invoiceId], (err) => {
+              if (err) {
+                console.error("❌ Error updating invoice totals:", err);
+                return res.status(500).json({ error: "Failed to update invoice totals" });
+              }
+
+              console.log("✅ Invoice totals updated");
+              res.json({ message: "Invoice updated successfully!" });
             });
+
+          }
         });
+      });
     });
+  });
 });
 
 app.get("/api/check-invoice/:invoiceNo", function (req, res) {
@@ -200,102 +274,38 @@ app.delete('/api/invoice/:id', function (req, res) {
 
 
 app.get('/api/invoice/:id', function (req, res) {
-    var invoiceId = req.params.id;
+  var invoiceId = req.params.id;
 
-    db.query('SELECT * FROM invoices WHERE id = ?', [invoiceId], function (err, results) {
-        if (err || results.length === 0) {
-            return res.status(404).json({ error: "Invoice not found" });
-        }
+  db.query('SELECT * FROM invoices WHERE id = ?', [invoiceId], function (err, results) {
+    if (err || results.length === 0) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
 
-        var invoice = results[0];
+    var invoice = results[0];
 
-        db.query('SELECT * FROM invoice_items WHERE invoiceId = ?', [invoiceId], function (err, itemResults) {
-            if (err) {
-                return res.status(500).json({ error: "Failed to get items" });
-            }
+    db.query('SELECT * FROM invoice_items WHERE invoiceId = ?', [invoiceId], function (err, itemResults) {
+      if (err) {
+        return res.status(500).json({ error: "Failed to get items" });
+      }
 
-            res.json({ invoice: invoice, items: itemResults });
-        });
+      res.json({ invoice: invoice, items: itemResults });
     });
+  });
 });
 
-
-app.put("/api/invoice/:id", (req, res) => {
-    const invoiceId = req.params.id;
-    const { invoiceNo, partyName, gstNo, date, items } = req.body;
-
-    // Update main invoice record
-    const updateInvoiceSql = `
-        UPDATE invoices 
-        SET invoiceNo = ?, partyName = ?, gstNo = ?, date = ?
-        WHERE id = ?
-    `;
-
-    db.query(updateInvoiceSql, [invoiceNo, partyName, gstNo, date, invoiceId], (err) => {
-        if (err) {
-            console.error("Error updating invoice:", err);
-            return res.status(500).json({ error: "Failed to update invoice" });
-        }
-
-        // Delete previous items
-        db.query("DELETE FROM invoice_items WHERE invoice_id = ?", [invoiceId], (err) => {
-            if (err) {
-                console.error("Error deleting old items:", err);
-                return res.status(500).json({ error: "Failed to delete old items" });
-            }
-
-            // Insert new items
-            const insertItemSql = `
-                INSERT INTO invoice_items 
-                (invoiceId, itemName, qty, rate, amt, gstP, gstAmt, netAmt) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `;
-
-            // Insert each item one-by-one
-            let pending = items.length;
-            if (pending === 0) {
-                return res.json({ success: true, message: "Invoice updated (no items)." });
-            }
-
-            items.forEach(item => {
-                db.query(insertItemSql, [
-                    invoiceId,
-                    item.itemName,
-                    item.qty,
-                    item.rate,
-                    item.amt,
-                    item.gstP,
-                    item.gstAmt,
-                    item.netAmt
-                ], (err) => {
-                    if (err) {
-                        console.error("Error inserting item:", err);
-                        return res.status(500).json({ error: "Failed to insert item" });
-                    }
-
-                    pending--;
-                    if (pending === 0) {
-                        // All items inserted
-                        return res.json({ success: true, message: "Invoice updated successfully" });
-                    }
-                });
-            });
-        });
-    });
-});
 
 
 // Helpers
 function calculateTotalAmt(items) {
-    return items.reduce(function (sum, item) { return sum + item.amt; }, 0);
+  return items.reduce(function (sum, item) { return sum + item.amt; }, 0);
 }
 
 function calculateTotalGst(items) {
-    return items.reduce(function (sum, item) { return sum + item.gstAmt; }, 0);
+  return items.reduce(function (sum, item) { return sum + item.gstAmt; }, 0);
 }
 
 function calculateNetAmt(items) {
-    return items.reduce(function (sum, item) { return sum + item.netAmt; }, 0);
+  return items.reduce(function (sum, item) { return sum + item.netAmt; }, 0);
 }
 
 
