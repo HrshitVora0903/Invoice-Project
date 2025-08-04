@@ -2,50 +2,70 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Table, TableHead, TableRow, TableCell, TableBody, Box } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import ConfirmDialog from './ConfirmDialog';
+
+
+
 
 function InvoiceList() {
     const [invoices, setInvoices] = useState([]);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
+
     const navigate = useNavigate();
     var location = useLocation();
 
     useEffect(() => {
         fetch("http://localhost:5000/api/allinvoices")
             .then(res => res.json())
-            .then(data => setInvoices(data))
+            .then(data => {
+                console.log(data, "-------------------------------");
+
+                setInvoices(data)
+            })
             .catch(err => console.error("Failed to fetch invoices:", err));
     }, [location]);
 
-    function handleDelete(id) {
-        var confirmDelete = window.confirm("Are you sure you want to delete this invoice?");
-        if (confirmDelete) {
-            fetch("http://localhost:5000/api/invoice/" + id, {
-                method: "DELETE"
+    function promptDelete(id) {
+        setSelectedInvoiceId(id);
+        setConfirmOpen(true);
+    }
+
+    function confirmDeleteInvoice() {
+        if (!selectedInvoiceId) return;
+
+        fetch("http://localhost:5000/api/invoice/" + selectedInvoiceId, {
+            method: "DELETE"
+        })
+            .then((res) => {
+                if (!res.ok) throw new Error("Failed to delete invoice");
+                return res.json();
             })
-                .then(function (res) {
-                    if (!res.ok) {
-                        throw new Error("Failed to delete invoice");
-                    }
-                    return res.json();
-                })
-                .then(function () {
-                    var updatedInvoices = invoices.filter(function (inv) {
-                        return inv.id !== id;
-                    });
-                    setInvoices(updatedInvoices);
-                })
-                .catch(function (err) {
-                    console.error("Error deleting invoice:", err);
-                    alert("Failed to delete invoice");
-                });
-        }
+            .then(() => {
+                const updated = invoices.filter((inv) => inv.id !== selectedInvoiceId);
+                setInvoices(updated);
+                toast.success("Invoice deleted");
+            })
+            .catch((err) => {
+                console.error("Error deleting invoice:", err);
+                toast.error("Failed to delete invoice");
+            })
+            .finally(() => {
+                setConfirmOpen(false);
+                setSelectedInvoiceId(null);
+            });
     }
 
 
+
     return (
+
         <Box sx={{ padding: '20px' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                 <h2>Invoice List</h2>
-                <Button variant="contained" onClick={() => navigate("/new-invoice")}>
+                <Button variant="contained"
+                    onClick={() => navigate("/new-invoice")}>
                     Add Invoice
                 </Button>
             </Box>
@@ -80,8 +100,8 @@ function InvoiceList() {
                                     variant="outlined"
                                     size="small"
                                     color="error"
-                                    onClick={function () { handleDelete(inv.id); }}
-                                    disabled={invoices.length === 1}
+                                    onClick={() => promptDelete(inv.id)}
+
                                 >
                                     Delete
                                 </Button>
@@ -97,7 +117,16 @@ function InvoiceList() {
                     ))}
                 </TableBody>
             </Table>
-        </Box>
+            <ConfirmDialog
+                open={confirmOpen}
+                title="Delete Invoice"
+                message="Are you sure you want to delete this invoice?"
+                onCancel={() => setConfirmOpen(false)}
+                onConfirm={confirmDeleteInvoice}
+            />
+
+        </Box >
+
     );
 }
 

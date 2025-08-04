@@ -14,6 +14,7 @@ function App() {
                     <Route path="/" element={<InvoiceList />} />
                     <Route path="/new-invoice" element={<InvoiceForm />} />
                     <Route path="/edit-invoice/:id" element={<InvoiceForm />} />
+
                 </Routes>
                 <ToastContainer
                     position="top-right"

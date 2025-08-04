@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { TextField, Button, Table, TableHead, TableRow, TableCell, TableBody, Box } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import ConfirmDialog from './ConfirmDialog'; // adjust path if needed
+
+
 
 import { useEffect } from "react"; // Make sure this is at the top if not already
 
@@ -25,8 +28,11 @@ function InvoiceForm() {
         { itemName: "", qty: "", rate: "", amt: "", gstP: "", gstAmt: "", netAmt: "" }
     ]);
 
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmTitle, setConfirmTitle] = useState('');
+    const [confirmMessage, setConfirmMessage] = useState('');
+    const [onConfirmAction, setOnConfirmAction] = useState(() => () => { });
 
-    // Prefill for edit mode
     useEffect(function () {
         if (id) {
             fetch("http://localhost:5000/api/invoice/" + id)
@@ -35,7 +41,13 @@ function InvoiceForm() {
                     setInvoiceNo(data.invoice.invoiceNo);
                     setPartyName(data.invoice.partyName);
                     setGstNo(data.invoice.gstNo);
-                    setDate(data.invoice.date.split("T")[0]);
+
+                    // // ✅ FIX: Properly handle date
+                    // const adjustedDate = new Date(data.invoice.date + 'T00:00:00')
+                    //     .toISOString()
+                    //     .split('T')[0];
+                    setDate(data.invoice.date);
+
                     setItems(data.items);
                 })
                 .catch(function (err) {
@@ -43,6 +55,11 @@ function InvoiceForm() {
                 });
         }
     }, [id]);
+
+
+
+
+
 
     // Only run this if creating a new invoice
     useEffect(function () {
@@ -163,6 +180,13 @@ function InvoiceForm() {
         setItems([...items, { itemName: "", qty: "", rate: "", amt: 0, gstP: "", gstAmt: 0, netAmt: 0 }]);
     };
 
+
+
+    // function formatDate(dateStr) {
+    //     return dateStr.slice(0, 10);
+    // }
+
+
     const SubmitNote = (e) => {
         e.preventDefault();
 
@@ -172,22 +196,22 @@ function InvoiceForm() {
         }
 
         if (!invoiceNo.trim()) {
-            alert("Please enter Invoice Number!");
+            toast.warning("Please enter Invoice Number!");
             return;
         }
 
         const gstRegex = /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
         if (!gstNo.trim()) {
-            alert("Please enter GST Number!");
+            toast.warning("Please enter GST Number!");
             return;
         } else if (!gstRegex.test(gstNo.trim().toUpperCase())) {
-            alert("Please enter a valid 15-digit GST Number!");
+            toast.warning("Please enter a valid 15-digit GST Number!");
             return;
         }
 
         const emptyItem = items.find((item) => !item.itemName.trim());
         if (emptyItem) {
-            alert("Please enter Item Name!");
+            toast.warning("Please enter Item Name!");
             return;
         }
 
@@ -200,21 +224,55 @@ function InvoiceForm() {
         };
 
         if (id) {
-            // Editing mode — skip duplicate check
-            fetch(`http://localhost:5000/api/invoice/${id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(invoice)
-            })
-                .then((res) => res.json())
-                .then(() => {
-                    alert("Invoice updated successfully!");
-                    navigate("/");
+            // Editing mode
+            fetch(`http://localhost:5000/api/invoice/${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    const originalInvoiceNo = data.invoice.invoiceNo;
+
+                    if (invoiceNo !== originalInvoiceNo) {
+                        // Invoice number changed – check for duplicate
+                        fetch(`http://localhost:5000/api/check-invoice/${invoiceNo}`)
+                            .then(res => res.json())
+                            .then(dupCheck => {
+                                if (dupCheck.exists) {
+                                    toast.error("Invoice number already exists. Please choose a different one.");
+                                    return;
+                                } else {
+                                    updateInvoice(); // Safe to proceed
+                                }
+                            })
+                            .catch(err => {
+                                console.error("Error checking invoice number:", err);
+                                toast.error("Could not verify invoice number. Try again.");
+                            });
+                    } else {
+                        // Invoice number not changed
+                        updateInvoice();
+                    }
                 })
-                .catch((err) => {
-                    console.error("Error updating invoice:", err);
-                    alert("Update failed");
+                .catch(err => {
+                    console.error("Error verifying original invoice:", err);
+                    toast.error("Something went wrong. Please try again.");
                 });
+
+            function updateInvoice() {
+                fetch(`http://localhost:5000/api/invoice/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(invoice)
+                })
+                    .then(res => res.json())
+                    .then(() => {
+                        toast.success("Invoice updated successfully!");
+                        navigate("/");
+                    })
+                    .catch(err => {
+                        console.error("Error updating invoice:", err);
+                        toast.error("Update failed");
+                    });
+            }
+
             return;
         }
 
@@ -223,7 +281,7 @@ function InvoiceForm() {
             .then((res) => res.json())
             .then((data) => {
                 if (data.exists) {
-                    alert("Invoice number already exists. Please use a different one.");
+                    toast.error("Invoice number already exists. Please use a different one.");
                     return;
                 }
 
@@ -234,28 +292,33 @@ function InvoiceForm() {
                 })
                     .then((res) => res.json())
                     .then(() => {
-                        alert("Invoice submitted successfully!");
+                        toast.success("Invoice submitted successfully!");
                         doReset();
                         navigate("/");
                     })
                     .catch((err) => {
                         console.error("Error submitting invoice:", err);
-                        alert("Error submitting invoice. Try again.");
+                        toast.error("Error submitting invoice. Try again.");
                     });
             })
             .catch((err) => {
                 console.error("Error checking invoice number:", err);
-                alert("Could not verify invoice number. Try again.");
+                toast.error("Could not verify invoice number. Try again.");
             });
     };
 
 
     function CleanNote() {
-        const confirmReset = window.confirm("Are you sure you want to reset the invoice?");
-        if (!confirmReset) return;
+        setConfirmTitle("Reset Invoice");
+        setConfirmMessage("Are you sure you want to reset the invoice?");
+        setOnConfirmAction(() => () => {
+            doReset();
+            toast.info("Invoice has been reset.");
+            setConfirmOpen(false);
+        });
+        setConfirmOpen(true);
+    }
 
-        doReset();
-    };
 
     function doReset() {
         setInvoiceNo(invoiceNo);
@@ -276,22 +339,29 @@ function InvoiceForm() {
 
     const handleDeleteItem = (indexToDelete) => {
         if (items.length === 1) {
-            alert("At least one item is required.");
+            toast.warning("At least one item is required.");
             return;
         }
 
-        const confirmDelete = window.confirm("Are you sure you want to delete this item?");
-        if (confirmDelete) {
+        setConfirmTitle("Delete Item");
+        setConfirmMessage("Are you sure you want to delete this item?");
+        setOnConfirmAction(() => () => {
             const updatedItems = items.filter((_, index) => index !== indexToDelete);
             setItems(updatedItems);
-        }
+            toast.success("Item deleted.");
+            setConfirmOpen(false);
+        });
+        setConfirmOpen(true);
     };
 
 
 
 
 
+
     return (
+
+
         <form onSubmit={SubmitNote} onReset={CleanNote} style={{ padding: '20px' }}>
             <TextField label="Invoice No" name="invoiceNo" value={invoiceNo} onChange={handleInputChange} margin="normal" fullWidth />
             <TextField label="Party Name" name="partyName" value={partyName} onChange={handleInputChange} margin="normal" fullWidth />
@@ -396,9 +466,27 @@ function InvoiceForm() {
             </h3>
 
             <Button type="reset" variant="contained" color="primary" sx={{ mt: 2, mr: 2 }}>Reset</Button>
-            <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>Submit</Button>
+            <Button type="submit" variant="contained" color="primary" sx={{ mt: 2, mr: 2 }}>Submit</Button>
+            <Button
+                variant="contained"
+                color="secondary"
+                sx={{ mt: 2, }}
+                onClick={() => navigate("/")}
+            >
+                Back
+            </Button>
+            <ConfirmDialog
+                open={confirmOpen}
+                title={confirmTitle}
+                message={confirmMessage}
+                onCancel={() => setConfirmOpen(false)}
+                onConfirm={onConfirmAction}
+            />
+
         </form>
+
     );
+
 }
 
 export default InvoiceForm;
