@@ -352,6 +352,129 @@ function calculateNetAmt(items) {
 
 
 
+// -----------
+// ------------
+// -----------
+//for  Firms
+// ----------
+// ----------
+// ------------
+
+//Get All Firms
+app.get('/api/firms', (req, res) => {
+  const query = 'SELECT * FROM firms';
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: 'DB Error' });
+    res.json(results);
+  });
+});
+
+//Add New Firm
+app.post('/api/firms', (req, res) => {
+  const { partName, gstNo, state, personName, status, mobile, email } = req.body;
+  const query = 'INSERT INTO firms (partName, gstNo, state, personName, status, mobile, email) VALUES (?, ?, ?, ?, ?, ?, ?)';
+
+  db.query(query, [partName, gstNo, state, personName, status, mobile, email], (err, result) => {
+    if (err) return res.status(500).json({ error: 'Insert Failed' });
+
+    // Fetch the inserted row by ID and return it
+    const selectQuery = 'SELECT * FROM firms WHERE id = ?';
+    db.query(selectQuery, [result.insertId], (err2, rows) => {
+      if (err2) return res.status(500).json({ error: 'Fetch after insert failed' });
+      res.status(201).json(rows[0]);
+    });
+  });
+});
+
+
+
+//Update firm
+app.put('/api/firms/:id', (req, res) => {
+  const id = req.params.id;
+  const { partName, gstNo, state, personName, status, mobile, email } = req.body;
+  const query = 'UPDATE firms SET partName = ?, gstNo = ?, state = ?, personName = ?, status = ?, mobile = ?, email = ? WHERE id = ?';
+  db.query(query, [partName, gstNo, state, personName, status, mobile, email, id], (err) => {
+    if (err) return res.status(500).json({ error: 'Update failed' });
+    db.query('SELECT * FROM firms WHERE id = ?', [id], (err2, rows) => {
+      if (err2) return res.status(500).json({ error: 'Fetch updated firm failed' });
+      res.json(rows[0]);
+    });
+  });
+});
+
+
+//Delete firm
+app.delete('/api/firms/:id', (req, res) => {
+  const query = 'DELETE FROM firms WHERE id = ?';
+  db.query(query, [req.params.id], (err) => {
+    if (err) return res.status(500).json({ error: 'Delete Failed' });
+    res.json({ message: 'Firm deleted' });
+  });
+});
+
+
+
+// =======================
+// ITEM ROUTES
+// =======================
+
+// Get all items
+app.get('/api/items', (req, res) => {
+  db.query('SELECT * FROM items', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// Get single item (optional)
+app.get('/api/items/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('SELECT * FROM items WHERE id = ?', [id], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (results.length === 0) return res.status(404).json({ error: 'Item not found' });
+    res.json(results[0]);
+  });
+});
+
+// Add item
+app.post('/api/items', (req, res) => {
+  const { itemName, hsnCode, status } = req.body;
+  db.query(
+    'INSERT INTO items (itemName, hsnCode, status) VALUES (?, ?, ?)',
+    [itemName, hsnCode, status],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ id: result.insertId, itemName, hsnCode, status });
+    }
+  );
+});
+
+// Update item
+app.put('/api/items/:id', (req, res) => {
+  const { id } = req.params;
+  const { itemName, hsnCode, status } = req.body;
+  db.query(
+    'UPDATE items SET itemName = ?, hsnCode = ?, status = ? WHERE id = ?',
+    [itemName, hsnCode, status, id],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ id, itemName, hsnCode, status });
+    }
+  );
+});
+
+// Delete item
+app.delete('/api/items/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM items WHERE id = ?', [id], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Item deleted successfully' });
+  });
+});
+
+
+
+
 app.listen(5000, function () {
   console.log("this 5000 port");
 });

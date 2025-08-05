@@ -1,9 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
-import { Button, Table, TableHead, TableRow, TableCell, TableBody, Box } from '@mui/material';
+import { Button, Table, TableHead, TableRow, TableCell, TableBody, Box, Typography, TableContainer, Paper } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import ConfirmDialog from './ConfirmDialog';
+import IconButton from '@mui/material/IconButton';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+
 
 
 
@@ -61,62 +65,78 @@ function InvoiceList() {
 
     return (
 
+
         <Box sx={{ padding: '20px' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <h2>Invoice List</h2>
-                <Button variant="contained"
-                    onClick={() => navigate("/new-invoice")}>
+            <Typography variant="h4" sx={{
+                fontWeight: 500, fontSize: '2.5rem', fontFamily: `'Poppins', 'Roboto', 'Segoe UI', sans-serif`, color: 'text.primary', letterSpacing: '0.5px', mb: 0,
+            }}>
+                Invoice List
+            </Typography>
+            <Box sx={{ mb: 2, mt: 2 }}>
+                <Button
+                    variant="contained"
+                    size="small" // makes the button smaller
+                    sx={{
+                        padding: '4px 12px',
+                        minWidth: 'unset',
+                        fontSize: '0.8rem',
+                        textTransform: 'none',
+                        fontFamily: `'Poppins', 'Roboto', sans-serif`,
+                    }}
+                    onClick={() => navigate("/new-invoice")}
+                >
                     Add Invoice
                 </Button>
             </Box>
 
-            <Table size="small">
-                <TableHead>
-                    <TableRow>
-                        <TableCell>Actions</TableCell>
-                        <TableCell>Invoice No</TableCell>
-                        <TableCell>Party Name</TableCell>
-                        <TableCell>GST No</TableCell>
-                        <TableCell>Date</TableCell>
-                        <TableCell>Amount</TableCell>
-                        <TableCell>GST Amount</TableCell>
-                        <TableCell>Net Amount</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {invoices.map((inv, index) => (
-                        <TableRow key={index}>
-                            <TableCell>
-                                <Button
-                                    variant="outlined"
-                                    size="small"
-                                    color="primary"
-                                    onClick={function () { navigate("/edit-invoice/" + inv.id); }}
-                                    sx={{ mr: 1 }}
-                                >
-                                    Edit
-                                </Button>
-                                <Button
-                                    variant="outlined"
-                                    size="small"
-                                    color="error"
-                                    onClick={() => promptDelete(inv.id)}
 
-                                >
-                                    Delete
-                                </Button>
-                            </TableCell>
-                            <TableCell>{inv.invoiceNo}</TableCell>
-                            <TableCell>{inv.partyName}</TableCell>
-                            <TableCell>{inv.gstNo}</TableCell>
-                            <TableCell>{inv.date}</TableCell>
-                            <TableCell>{inv.amt}</TableCell>
-                            <TableCell>{inv.gstAmt}</TableCell>
-                            <TableCell>{inv.netAmt}</TableCell>
+            <TableContainer component={Paper}>
+                <Table size="small">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Actions</TableCell>
+                            <TableCell>Invoice No</TableCell>
+                            <TableCell>Party Name</TableCell>
+                            <TableCell>GST No</TableCell>
+                            <TableCell>Date</TableCell>
+                            <TableCell>Amount</TableCell>
+                            <TableCell>GST Amount</TableCell>
+                            <TableCell>Net Amount</TableCell>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </TableHead>
+                    <TableBody>
+                        {invoices.map((inv, index) => (
+                            <TableRow key={index}>
+                                <TableCell>
+                                    <IconButton
+                                        color="primary"
+                                        size="small"
+                                        onClick={() => navigate("/edit-invoice/" + inv.id)}
+                                        sx={{ mr: 1 }}
+                                    >
+                                        <EditIcon />
+                                    </IconButton>
+                                    <IconButton
+                                        color="error"
+                                        size="small"
+                                        onClick={() => promptDelete(inv.id)}
+                                    >
+                                        <DeleteIcon />
+                                    </IconButton>
+
+                                </TableCell>
+                                <TableCell>{inv.invoiceNo}</TableCell>
+                                <TableCell>{inv.partyName}</TableCell>
+                                <TableCell>{inv.gstNo}</TableCell>
+                                <TableCell>{inv.date}</TableCell>
+                                <TableCell>{inv.amt}</TableCell>
+                                <TableCell>{inv.gstAmt}</TableCell>
+                                <TableCell>{inv.netAmt}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
             <ConfirmDialog
                 open={confirmOpen}
                 title="Delete Invoice"
@@ -125,7 +145,7 @@ function InvoiceList() {
                 onConfirm={confirmDeleteInvoice}
             />
 
-        </Box >
+        </Box>
 
     );
 }
