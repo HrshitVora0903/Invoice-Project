@@ -362,12 +362,29 @@ function calculateNetAmt(items) {
 
 //Get All Firms
 app.get('/api/firms', (req, res) => {
-  const query = 'SELECT * FROM firms';
+  const query = "SELECT * FROM firms";
   db.query(query, (err, results) => {
-    if (err) return res.status(500).json({ error: 'DB Error' });
+    if (err) {
+      console.error("Error fetching firms:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
     res.json(results);
   });
 });
+
+// ✅ New route (only returns active firms for InvoiceForm)
+app.get('/api/firms/active', (req, res) => {
+  const query = "SELECT * FROM firms WHERE status = 'active'";
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching active firms:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+    res.json(results);
+  });
+});
+
+
 
 //Add New Firm
 app.post('/api/firms', (req, res) => {
@@ -426,6 +443,18 @@ app.get('/api/items', (req, res) => {
   });
 });
 
+app.get('/api/items/active', (req, res) => {
+  const query = "SELECT itemName FROM items WHERE status = 'active'";
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching items:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+    res.json(results);
+  });
+});
+
+
 // Get single item (optional)
 app.get('/api/items/:id', (req, res) => {
   const { id } = req.params;
@@ -471,6 +500,7 @@ app.delete('/api/items/:id', (req, res) => {
     res.json({ message: 'Item deleted successfully' });
   });
 });
+
 
 
 

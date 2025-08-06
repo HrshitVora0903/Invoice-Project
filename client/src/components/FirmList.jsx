@@ -3,13 +3,16 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import {
     Button, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Box, Typography, Dialog,
-    DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Paper
+    DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Paper,
+    FormControl, InputLabel, Select
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import ConfirmDialog from './ConfirmDialog';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';
+
+
 
 
 
@@ -66,23 +69,18 @@ function FirmList() {
 
         // Email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!email.trim()) {
-            toast.warning("Please enter Email!");
-            return;
-        } else if (!emailRegex.test(email.trim())) {
+        if (email.trim() && !emailRegex.test(email.trim())) {
             toast.warning("Please enter a valid Email address!");
             return;
         }
 
         // Mobile validation
         const phoneRegex = /^[6-9]\d{9}$/;
-        if (!mobile.trim()) {
-            toast.warning("Please enter Mobile Number!");
-            return;
-        } else if (!phoneRegex.test(mobile.trim())) {
+        if (mobile.trim() && !phoneRegex.test(mobile.trim())) {
             toast.warning("Please enter a valid 10-digit Mobile Number starting with 6-9!");
             return;
         }
+
 
         const firmPayload = {
             partName: partyName,
@@ -230,9 +228,9 @@ function FirmList() {
                             <TableCell>GST No</TableCell>
                             <TableCell>State</TableCell>
                             <TableCell>Person Name</TableCell>
-                            <TableCell>Status</TableCell>
                             <TableCell>Mobile</TableCell>
                             <TableCell>Email</TableCell>
+                            <TableCell>Status</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -252,6 +250,8 @@ function FirmList() {
                                 <TableCell>{firm.gstNo}</TableCell>
                                 <TableCell>{firm.state}</TableCell>
                                 <TableCell>{firm.personName}</TableCell>
+                                <TableCell>{firm.mobile}</TableCell>
+                                <TableCell>{firm.email}</TableCell>
                                 <TableCell>
                                     {firm.status === 'active' ? (
                                         <CheckCircleIcon sx={{ color: 'green' }} />
@@ -259,8 +259,6 @@ function FirmList() {
                                         <CancelIcon sx={{ color: 'red' }} />
                                     )}
                                 </TableCell>
-                                <TableCell>{firm.mobile}</TableCell>
-                                <TableCell>{firm.email}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -280,25 +278,47 @@ function FirmList() {
                         fullWidth margin="dense" name="gstNo" label="GST No"
                         value={newFirm.gstNo} onChange={handleChange}
                     />
-                    <TextField
-                        select fullWidth margin="dense" name="state" label="State"
-                        value={newFirm.state} onChange={handleChange}
-                    >
-                        {statesOfIndia.map((state) => (
-                            <MenuItem key={state} value={state}>{state}</MenuItem>
-                        ))}
-                    </TextField>
+                    <FormControl fullWidth margin="dense">
+                        <InputLabel id="state-label">State</InputLabel>
+                        <Select
+                            labelId="state-label"
+                            id="state"
+                            name="state"
+                            value={newFirm.state}
+                            label="State"
+                            onChange={handleChange}
+                            MenuProps={{
+                                disableAutoFocusItem: true,
+                                PaperProps: {
+                                    style: {
+                                        maxHeight: 300,
+                                        overflowY: 'auto',
+                                    },
+                                },
+                            }}
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                setTimeout(() => {
+                                    const el = document.getElementById("state");
+                                    if (el) el.click();
+                                }, 0);
+                            }}
+                        >
+                            {statesOfIndia.map((state) => (
+                                <MenuItem key={state} value={state}>
+                                    {state}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
+
+
                     <TextField
                         fullWidth margin="dense" name="personName" label="Person Name"
                         value={newFirm.personName} onChange={handleChange}
                     />
-                    <TextField
-                        select fullWidth margin="dense" name="status" label="Status"
-                        value={newFirm.status} onChange={handleChange}
-                    >
-                        <MenuItem value="Active">Active</MenuItem>
-                        <MenuItem value="Inactive">Inactive</MenuItem>
-                    </TextField>
+
                     <TextField
                         fullWidth margin="dense" name="mobile" label="Mobile"
                         value={newFirm.mobile} onChange={handleChange}
@@ -307,6 +327,13 @@ function FirmList() {
                         fullWidth margin="dense" name="email" label="Email"
                         value={newFirm.email} onChange={handleChange}
                     />
+                    <TextField
+                        select fullWidth margin="dense" name="status" label="Status"
+                        value={newFirm.status} onChange={handleChange}
+                    >
+                        <MenuItem value="Active">Active</MenuItem>
+                        <MenuItem value="Inactive">Inactive</MenuItem>
+                    </TextField>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpen(false)}>Cancel</Button>

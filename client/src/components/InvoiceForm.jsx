@@ -3,7 +3,7 @@ import { TextField, Button, Table, TableHead, TableRow, TableCell, TableBody, Bo
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import ConfirmDialog from './ConfirmDialog'; // adjust path if needed
-
+import { MenuItem, Select, InputLabel, FormControl } from '@mui/material';
 
 
 import { useEffect } from "react"; // Make sure this is at the top if not already
@@ -13,6 +13,7 @@ function InvoiceForm() {
     var { id } = useParams();
     var navigate = useNavigate();
 
+    const [firms, setFirms] = useState([]);
     var [invoiceNo, setInvoiceNo] = useState("");
     var [partyName, setPartyName] = useState("");
     var [gstNo, setGstNo] = useState("");
@@ -27,6 +28,7 @@ function InvoiceForm() {
     var [items, setItems] = useState([
         { itemName: "", qty: "", rate: "", amt: "", gstP: "", gstAmt: "", netAmt: "" }
     ]);
+    const [itemList, setItemList] = useState([]);
 
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmTitle, setConfirmTitle] = useState('');
@@ -56,11 +58,6 @@ function InvoiceForm() {
         }
     }, [id]);
 
-
-
-
-
-
     // Only run this if creating a new invoice
     useEffect(function () {
         if (!id) {
@@ -74,6 +71,29 @@ function InvoiceForm() {
                 });
         }
     }, [id]);
+
+
+    useEffect(() => {
+        fetch("http://localhost:5000/api/firms/active")
+            .then((res) => res.json())
+            .then((data) => {
+                setFirms(data);
+            })
+            .catch((err) => {
+                console.error("Error fetching firms:", err);
+            });
+    }, []);
+
+    useEffect(() => {
+        fetch("http://localhost:5000/api/items/active")
+            .then((res) => res.json())
+            .then((data) => {
+                setItemList(data);
+            })
+            .catch((err) => console.error("Failed to fetch items", err));
+    }, []);
+
+
 
 
     const handleChange = (index, event) => {
@@ -364,8 +384,43 @@ function InvoiceForm() {
 
         <form onSubmit={SubmitNote} onReset={CleanNote} style={{ padding: '20px' }}>
             <TextField label="Invoice No" name="invoiceNo" value={invoiceNo} onChange={handleInputChange} margin="normal" fullWidth />
-            <TextField label="Party Name" name="partyName" value={partyName} onChange={handleInputChange} margin="normal" fullWidth />
-            <TextField label="GST No." name="gstNo" value={gstNo} onChange={handleInputChange} margin="normal" fullWidth />
+            <FormControl margin="normal" fullWidth>
+                <InputLabel id="party-select-label">Party Name</InputLabel>
+                <Select
+                    labelId="party-select-label"
+                    id="party-select"
+                    value={partyName}
+                    label="Party Name"
+                    onChange={(e) => {
+                        const selectedName = e.target.value;
+                        setPartyName(selectedName);
+                        const selectedFirm = firms.find(firm => firm.partName === selectedName);
+                        if (selectedFirm) {
+                            setGstNo(selectedFirm.gstNo);
+                        } else {
+                            setGstNo("");
+                        }
+                    }}
+                >
+                    {firms.map((firm) => (
+                        <MenuItem key={firm.id} value={firm.partName}>
+                            {firm.partName}
+                        </MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
+
+            <TextField
+                label="GST No."
+                name="gstNo"
+                value={gstNo}
+                margin="normal"
+                fullWidth
+                InputProps={{
+                    readOnly: true,
+                }}
+            />
             <TextField
                 label="Date"
                 name="date"
@@ -409,8 +464,24 @@ function InvoiceForm() {
                             </TableCell>
 
                             <TableCell>
-                                <TextField name="itemName" value={item.itemName} onChange={(e) => handleChange(index, e)} />
+                                <FormControl fullWidth size="small">
+                                    <Select
+                                        name="itemName"
+                                        value={item.itemName}
+                                        onChange={(e) => handleChange(index, e)}
+                                        displayEmpty
+                                    >
+                                        <MenuItem value="" disabled>Select Item</MenuItem>
+                                        {itemList.map((itm, i) => (
+                                            <MenuItem key={i} value={itm.itemName}>
+                                                {itm.itemName}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
                             </TableCell>
+
+
                             <TableCell>
                                 <TextField name="qty" value={item.qty} onChange={(e) => handleChange(index, e)} />
                             </TableCell>

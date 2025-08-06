@@ -15,6 +15,7 @@ const ItemList = () => {
     const [editingItem, setEditingItem] = useState(null);
     const [form, setForm] = useState({ itemName: '', hsnCode: '', status: 'active' });
     const [confirmDialog, setConfirmDialog] = useState({ open: false, itemId: null });
+    const [errors, setErrors] = useState({});
 
     useEffect(() => {
         fetchItems();
@@ -25,6 +26,14 @@ const ItemList = () => {
             .then(res => res.json())
             .then(data => setItems(data))
             .catch(err => toast.error('Failed to fetch items'));
+    };
+
+    const validateForm = () => {
+        const newErrors = {};
+        if (!form.itemName.trim()) newErrors.itemName = "Item Name is required";
+        if (!form.hsnCode.trim()) newErrors.hsnCode = "HSN Code is required";
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleChange = e => {
@@ -49,6 +58,11 @@ const ItemList = () => {
     };
 
     const handleSubmit = () => {
+        if (!validateForm()) {
+            toast.error("Please fill all required fields.");
+            return;
+        }
+
         const method = editingItem ? 'PUT' : 'POST';
         const url = editingItem
             ? `http://localhost:5000/api/items/${editingItem}`
@@ -70,6 +84,7 @@ const ItemList = () => {
             })
             .catch(err => toast.error(err.message));
     };
+
 
     const handleDelete = () => {
         fetch(`http://localhost:5000/api/items/${confirmDialog.itemId}`, {
