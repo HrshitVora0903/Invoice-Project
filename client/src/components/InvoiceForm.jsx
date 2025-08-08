@@ -6,6 +6,8 @@ import ConfirmDialog from './ConfirmDialog'; // adjust path if needed
 import { MenuItem, Select, InputLabel, FormControl } from '@mui/material';
 
 
+
+
 import { useEffect } from "react"; // Make sure this is at the top if not already
 
 
@@ -37,7 +39,7 @@ function InvoiceForm() {
 
     useEffect(function () {
         if (id) {
-            fetch("http://localhost:5000/api/invoice/" + id)
+            fetch("http://localhost:5000/api/invoices/" + id)
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     setInvoiceNo(data.invoice.invoiceNo);
@@ -61,7 +63,7 @@ function InvoiceForm() {
     // Only run this if creating a new invoice
     useEffect(function () {
         if (!id) {
-            fetch("http://localhost:5000/api/next-invoice-number")
+            fetch("http://localhost:5000/api/next-invoice-no")
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     setInvoiceNo(data.nextInvoiceNo);
@@ -245,7 +247,7 @@ function InvoiceForm() {
 
         if (id) {
             // Editing mode
-            fetch(`http://localhost:5000/api/invoice/${id}`)
+            fetch(`http://localhost:5000/api/invoices/${id}`)
                 .then(res => res.json())
                 .then(data => {
                     const originalInvoiceNo = data.invoice.invoiceNo;
@@ -277,7 +279,7 @@ function InvoiceForm() {
                 });
 
             function updateInvoice() {
-                fetch(`http://localhost:5000/api/invoice/${id}`, {
+                fetch(`http://localhost:5000/api/invoices/${id}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(invoice)
@@ -314,7 +316,7 @@ function InvoiceForm() {
                     .then(() => {
                         toast.success("Invoice submitted successfully!");
                         doReset();
-                        navigate("/");
+                        navigate("/invoice");
                     })
                     .catch((err) => {
                         console.error("Error submitting invoice:", err);
@@ -379,6 +381,7 @@ function InvoiceForm() {
 
 
 
+
     return (
 
 
@@ -394,19 +397,28 @@ function InvoiceForm() {
                     onChange={(e) => {
                         const selectedName = e.target.value;
                         setPartyName(selectedName);
-                        const selectedFirm = firms.find(firm => firm.partName === selectedName);
+                        const selectedFirm = firms.find(firm => firm.partyName === selectedName);
                         if (selectedFirm) {
                             setGstNo(selectedFirm.gstNo);
                         } else {
                             setGstNo("");
                         }
                     }}
+                    renderValue={(selected) => {
+                        // Show only the party name (without extra info)
+                        return selected;
+                    }}
                 >
-                    {firms.map((firm) => (
-                        <MenuItem key={firm.id} value={firm.partName}>
-                            {firm.partName}
-                        </MenuItem>
-                    ))}
+                    {firms.map((firm) => {
+                        const extraInfo = [firm.gstNo, firm.personName, firm.mobile]
+                            .filter(Boolean)
+                            .join(', ');
+                        return (
+                            <MenuItem key={firm.id} value={firm.partyName}>
+                                {`${firm.partyName}${extraInfo ? ` (${extraInfo})` : ''}`}
+                            </MenuItem>
+                        );
+                    })}
                 </Select>
             </FormControl>
 

@@ -83,7 +83,7 @@ function FirmList() {
 
 
         const firmPayload = {
-            partName: partyName,
+            partyName: partyName,
             gstNo: gstNo.trim().toUpperCase(),
             state,
             personName,
@@ -174,7 +174,7 @@ function FirmList() {
 
     const handleEditClick = (firm) => {
         setNewFirm({
-            partyName: firm.partName,
+            partyName: firm.partyName,
             gstNo: firm.gstNo,
             state: firm.state,
             personName: firm.personName,
@@ -246,7 +246,7 @@ function FirmList() {
                                     </IconButton>
                                 </TableCell>
 
-                                <TableCell>{firm.partName}</TableCell>
+                                <TableCell>{firm.partyName}</TableCell>
                                 <TableCell>{firm.gstNo}</TableCell>
                                 <TableCell>{firm.state}</TableCell>
                                 <TableCell>{firm.personName}</TableCell>

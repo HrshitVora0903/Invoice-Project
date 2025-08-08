@@ -39,7 +39,7 @@ function InvoiceList() {
     function confirmDeleteInvoice() {
         if (!selectedInvoiceId) return;
 
-        fetch("http://localhost:5000/api/invoice/" + selectedInvoiceId, {
+        fetch("http://localhost:5000/api/invoices/" + selectedInvoiceId, {
             method: "DELETE"
         })
             .then((res) => {

@@ -7,6 +7,8 @@ import FirmList from "./FirmList";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Navbar from "./Navbar";
+import Home from './Home';
+
 
 
 
@@ -17,7 +19,8 @@ function App() {
 
             <Navbar />
             <Routes>
-                <Route path="/" element={<InvoiceList />} />
+                <Route path="/" element={<Home />} />
+                <Route path="/invoice" element={<InvoiceList />} />
                 <Route path="/new-invoice" element={<InvoiceForm />} />
                 <Route path="/edit-invoice/:id" element={<InvoiceForm />} />
                 <Route path="/firm" element={<FirmList />} />
