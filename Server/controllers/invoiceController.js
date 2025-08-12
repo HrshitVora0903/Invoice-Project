@@ -4,14 +4,26 @@ import invoiceHelpers from '../helpers/invoiceHelpers.js';
 
 
 
-// GET all invoices (summary)
+// GET all invoices (summary) with optional type filter
 export const getAllInvoices = (req, res) => {
-    const query = "SELECT id, invoiceNo, partyName, gstNo, DATE_FORMAT(date, '%d-%m-%Y') AS date, amt, gstAmt, netAmt FROM invoices ORDER BY id DESC";
-    db.query(query, (err, data) => {
+    const type = req.query.type || 'sell'; // default to 'sell' if not provided
+
+    const query = `
+        SELECT 
+            id, invoiceNo, partyName, gstNo, 
+            DATE_FORMAT(date, '%d-%m-%Y') AS date, 
+            amt, gstAmt, netAmt 
+        FROM invoices 
+        WHERE type = ?
+        ORDER BY id DESC
+    `;
+
+    db.query(query, [type], (err, data) => {
         if (err) return res.status(500).json({ error: "Failed to fetch invoices" });
         res.status(200).json(data);
     });
 };
+
 
 // GET single invoice with items
 export const getInvoiceById = (req, res) => {
@@ -45,7 +57,8 @@ export const createInvoice = (req, res) => {
         partyName,
         gstNo,
         date,
-        items
+        items,
+        type
     } = req.body;
 
     const totalAmt = invoiceHelpers.calculateTotalAmt(items);
@@ -53,13 +66,13 @@ export const createInvoice = (req, res) => {
     const totalNetAmt = invoiceHelpers.calculateNetAmt(items);
 
     const invoiceQuery = `
-    INSERT INTO invoices (invoiceNo, partyName, gstNo, date, amt, gstAmt, netAmt)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `;
+        INSERT INTO invoices (invoiceNo, partyName, gstNo, date, amt, gstAmt, netAmt, type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
     db.query(
         invoiceQuery,
-        [invoiceNo, partyName, gstNo, date, totalAmt, totalGstAmt, totalNetAmt],
+        [invoiceNo, partyName, gstNo, date, totalAmt, totalGstAmt, totalNetAmt, type],
         (err, result) => {
             if (err) return res.status(500).json({ error: "Failed to create invoice" });
 
@@ -77,10 +90,10 @@ export const createInvoice = (req, res) => {
             ]);
 
             const itemsQuery = `
-        INSERT INTO invoice_items
-        (invoiceId, itemName, qty, rate, amt, gstP, gstAmt, netAmt)
-        VALUES ?
-      `;
+                INSERT INTO invoice_items
+                (invoiceId, itemName, qty, rate, amt, gstP, gstAmt, netAmt)
+                VALUES ?
+            `;
 
             db.query(itemsQuery, [itemQueries], err => {
                 if (err) return res.status(500).json({ error: "Failed to insert invoice items" });
@@ -89,6 +102,7 @@ export const createInvoice = (req, res) => {
         }
     );
 };
+
 
 // UPDATE invoice with items
 export const updateInvoice = (req, res) => {
@@ -237,12 +251,13 @@ export const deleteInvoice = (req, res) => {
 };
 
 // Check for duplicate invoice number
-// GET /api/check-invoice/:invoiceNo
+// GET /api/check-invoice/:invoiceNo?type=sell or ?type=purchase
 export const checkInvoiceNo = (req, res) => {
     const { invoiceNo } = req.params;
+    const type = req.query.type || 'sell';  // Default to 'sell' if not provided
 
-    const query = "SELECT COUNT(*) AS count FROM invoices WHERE invoiceNo = ?";
-    db.query(query, [invoiceNo], (err, result) => {
+    const query = "SELECT COUNT(*) AS count FROM invoices WHERE invoiceNo = ? AND type = ?";
+    db.query(query, [invoiceNo, type], (err, result) => {
         if (err) {
             console.error("Error checking invoice number:", err);
             return res.status(500).json({ error: "Database error" });
@@ -254,16 +269,19 @@ export const checkInvoiceNo = (req, res) => {
 };
 
 
+
 // Get next invoice number (numeric only)
 export const getNextInvoiceNo = (req, res) => {
-    const query = "SELECT MAX(CAST(invoiceNo AS UNSIGNED)) AS maxNo FROM invoices";
+    const type = req.query.type || 'sell'; // default to sell if not passed
 
-    db.query(query, (err, result) => {
+    const query = `SELECT MAX(CAST(invoiceNo AS UNSIGNED)) AS maxInvoice FROM invoices WHERE type = ?`;
+
+    db.query(query, [type], (err, results) => {
         if (err) return res.status(500).json({ error: "Failed to get next invoice number" });
 
-        const maxNo = result[0].maxNo || 0;
-        const nextNo = (maxNo + 1).toString();
+        const nextInvoiceNo = (results[0].maxInvoice || 0) + 1;
 
-        res.status(200).json({ nextInvoiceNo: nextNo });
+        res.status(200).json({ nextInvoiceNo });
     });
 };
+

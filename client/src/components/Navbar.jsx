@@ -22,8 +22,11 @@ function Navbar() {
 
                 {/* Center: Navigation Buttons */}
                 <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Button color="inherit" onClick={() => navigate('/invoice')} >
-                        Invoice
+                    <Button color="inherit" onClick={() => navigate('/purchase')} >
+                        Purchase
+                    </Button>
+                    <Button color="inherit" onClick={() => navigate('/sell')} >
+                        Sell
                     </Button>
                     <Button color="inherit" onClick={() => navigate('/firm')}>
                         Firm

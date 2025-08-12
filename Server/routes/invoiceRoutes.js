@@ -14,7 +14,7 @@ import {
 const router = express.Router();
 
 // 📄 GET all invoices
-router.get("/allinvoices", getAllInvoices);
+router.get("/invoices", getAllInvoices);
 
 // ➕ POST new invoice with items
 router.post("/invoices", createInvoice);

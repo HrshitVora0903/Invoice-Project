@@ -1,20 +1,16 @@
 import React, { useState } from "react";
 import { TextField, Button, Table, TableHead, TableRow, TableCell, TableBody, Box } from '@mui/material';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import ConfirmDialog from './ConfirmDialog'; // adjust path if needed
+import ConfirmDialog from '../components/ConfirmDialog'; // adjust path if needed
 import { MenuItem, Select, InputLabel, FormControl } from '@mui/material';
-
-
-
-
 import { useEffect } from "react"; // Make sure this is at the top if not already
-
 
 function InvoiceForm() {
     var { id } = useParams();
     var navigate = useNavigate();
-
+    const location = useLocation();
+    const type = location.pathname.includes('/purchase') ? 'purchase' : 'sell';
     const [firms, setFirms] = useState([]);
     var [invoiceNo, setInvoiceNo] = useState("");
     var [partyName, setPartyName] = useState("");
@@ -45,14 +41,11 @@ function InvoiceForm() {
                     setInvoiceNo(data.invoice.invoiceNo);
                     setPartyName(data.invoice.partyName);
                     setGstNo(data.invoice.gstNo);
-
-                    // // ✅ FIX: Properly handle date
-                    // const adjustedDate = new Date(data.invoice.date + 'T00:00:00')
-                    //     .toISOString()
-                    //     .split('T')[0];
                     setDate(data.invoice.date);
-
                     setItems(data.items);
+                    if (data.invoice.type) {
+                        setType(data.invoice.type);
+                    }
                 })
                 .catch(function (err) {
                     console.error("Error fetching invoice:", err);
@@ -63,7 +56,7 @@ function InvoiceForm() {
     // Only run this if creating a new invoice
     useEffect(function () {
         if (!id) {
-            fetch("http://localhost:5000/api/next-invoice-no")
+            fetch(`http://localhost:5000/api/next-invoice-no?type=${type}`)
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     setInvoiceNo(data.nextInvoiceNo);
@@ -94,8 +87,6 @@ function InvoiceForm() {
             })
             .catch((err) => console.error("Failed to fetch items", err));
     }, []);
-
-
 
 
     const handleChange = (index, event) => {
@@ -203,12 +194,6 @@ function InvoiceForm() {
     };
 
 
-
-    // function formatDate(dateStr) {
-    //     return dateStr.slice(0, 10);
-    // }
-
-
     const SubmitNote = (e) => {
         e.preventDefault();
 
@@ -217,7 +202,7 @@ function InvoiceForm() {
             return;
         }
 
-        if (!invoiceNo.trim()) {
+        if (!String(invoiceNo).trim()) {
             toast.warning("Please enter Invoice Number!");
             return;
         }
@@ -242,19 +227,20 @@ function InvoiceForm() {
             partyName,
             gstNo,
             date,
-            items
+            items,
+            type
         };
 
         if (id) {
             // Editing mode
-            fetch(`http://localhost:5000/api/invoices/${id}`)
+            fetch(`http://localhost:5000/api/invoices/${id}?type=${type}`)
                 .then(res => res.json())
                 .then(data => {
                     const originalInvoiceNo = data.invoice.invoiceNo;
 
                     if (invoiceNo !== originalInvoiceNo) {
                         // Invoice number changed – check for duplicate
-                        fetch(`http://localhost:5000/api/check-invoice/${invoiceNo}`)
+                        fetch(`http://localhost:5000/api/check-invoice/${invoiceNo}?type=${type}`)
                             .then(res => res.json())
                             .then(dupCheck => {
                                 if (dupCheck.exists) {
@@ -279,7 +265,7 @@ function InvoiceForm() {
                 });
 
             function updateInvoice() {
-                fetch(`http://localhost:5000/api/invoices/${id}`, {
+                fetch(`http://localhost:5000/api/invoices/${id}?type=${type}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(invoice)
@@ -299,7 +285,7 @@ function InvoiceForm() {
         }
 
         // Creating new invoice — check if invoice number exists
-        fetch(`http://localhost:5000/api/check-invoice/${invoiceNo}`)
+        fetch(`http://localhost:5000/api/check-invoice/${invoiceNo}?type=${type}`)
             .then((res) => res.json())
             .then((data) => {
                 if (data.exists) {
@@ -316,7 +302,7 @@ function InvoiceForm() {
                     .then(() => {
                         toast.success("Invoice submitted successfully!");
                         doReset();
-                        navigate("/invoice");
+                        navigate(`/${type}`);
                     })
                     .catch((err) => {
                         console.error("Error submitting invoice:", err);
@@ -376,14 +362,7 @@ function InvoiceForm() {
         setConfirmOpen(true);
     };
 
-
-
-
-
-
-
     return (
-
 
         <form onSubmit={SubmitNote} onReset={CleanNote} style={{ padding: '20px' }}>
             <TextField label="Invoice No" name="invoiceNo" value={invoiceNo} onChange={handleInputChange} margin="normal" fullWidth />
@@ -554,7 +533,7 @@ function InvoiceForm() {
                 variant="contained"
                 color="secondary"
                 sx={{ mt: 2, }}
-                onClick={() => navigate("/")}
+                onClick={() => navigate(`/${type}`)}
             >
                 Back
             </Button>

@@ -7,7 +7,7 @@ import {
     FormControl, InputLabel, Select
 } from '@mui/material';
 import { toast } from 'react-toastify';
-import ConfirmDialog from './ConfirmDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';

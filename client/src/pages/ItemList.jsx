@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import { CheckCircle, Cancel, Edit, Delete } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-import ConfirmDialog from './ConfirmDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const ItemList = () => {
     const [items, setItems] = useState([]);

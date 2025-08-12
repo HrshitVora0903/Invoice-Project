@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Button, Table, TableHead, TableRow, TableCell, TableBody, Box, Typography, TableContainer, Paper } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import ConfirmDialog from './ConfirmDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -19,9 +19,11 @@ function InvoiceList() {
 
     const navigate = useNavigate();
     var location = useLocation();
+    const type = location.pathname.includes('/purchase') ? 'purchase' : 'sell';
 
     useEffect(() => {
-        fetch("http://localhost:5000/api/allinvoices")
+        fetch(`http://localhost:5000/api/invoices?type=${type}`)
+
             .then(res => res.json())
             .then(data => {
                 console.log(data, "-------------------------------");
@@ -83,7 +85,10 @@ function InvoiceList() {
                         textTransform: 'none',
                         fontFamily: `'Poppins', 'Roboto', sans-serif`,
                     }}
-                    onClick={() => navigate("/new-invoice")}
+                    onClick={() => {
+                        navigate(`/${type}/add-invoice`);
+                    }}
+
                 >
                     Add Invoice
                 </Button>
@@ -111,7 +116,7 @@ function InvoiceList() {
                                     <IconButton
                                         color="primary"
                                         size="small"
-                                        onClick={() => navigate("/edit-invoice/" + inv.id)}
+                                        onClick={() => navigate(`/${type}/edit-invoice/${inv.id}`)}
                                         sx={{ mr: 1 }}
                                     >
                                         <EditIcon />
