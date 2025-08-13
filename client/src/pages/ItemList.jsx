@@ -62,6 +62,16 @@ const ItemList = () => {
             toast.error("Please fill all required fields.");
             return;
         }
+        // Duplicate check (case-insensitive, exact match)
+        const isDuplicate = items.some(item =>
+            item.itemName.trim().toLowerCase() === form.itemName.trim().toLowerCase() &&
+            item.id !== editingItem // allow same name if editing same record
+        );
+
+        if (isDuplicate) {
+            toast.error("Item already exists.");
+            return;
+        }
 
         const method = editingItem ? 'PUT' : 'POST';
         const url = editingItem

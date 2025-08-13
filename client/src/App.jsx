@@ -5,6 +5,8 @@ import InvoiceForm from "./pages/InvoiceForm";
 import FirmList from "./pages/FirmList";
 import ItemList from "./pages/ItemList";
 import Navbar from "./components/Navbar";
+import StockReport from "./pages/StockReport";
+
 
 function App() {
     return (
@@ -27,6 +29,9 @@ function App() {
                 {/* Master Data */}
                 <Route path="/firm" element={<FirmList />} />
                 <Route path="/items" element={<ItemList />} />
+
+                {/* Stock Report */}
+                <Route path="/stkreport" element={<StockReport />} />
             </Routes>
         </Router>
     );

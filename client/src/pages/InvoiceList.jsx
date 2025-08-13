@@ -31,7 +31,7 @@ function InvoiceList() {
                 setInvoices(data)
             })
             .catch(err => console.error("Failed to fetch invoices:", err));
-    }, [location]);
+    }, [type]);
 
     function promptDelete(id) {
         setSelectedInvoiceId(id);

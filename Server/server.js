@@ -3,6 +3,7 @@ import cors from "cors";
 import invoiceRoutes from "./routes/invoiceRoutes.js";
 import firmRoutes from "./routes/firmRoutes.js";
 import itemRoutes from "./routes/itemRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js"
 import db from "./config/db.js";
 
 const app = express();
@@ -25,6 +26,7 @@ db.connect(err => {
 app.use("/api", invoiceRoutes);  // e.g. /api/invoices/next-invoice-no
 app.use("/api", firmRoutes);
 app.use("/api", itemRoutes);
+app.use("/api", reportRoutes);
 
 // Root Route
 app.get("/", (req, res) => {
