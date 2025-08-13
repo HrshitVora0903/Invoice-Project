@@ -29,7 +29,7 @@ function Summary() {
                         <TableCell align="right">Sell Qty</TableCell>
                         <TableCell align="right">Balance Qty</TableCell>
                         <TableCell align="right">Purchase Amt</TableCell>
-                        <TableCell align="right">Sale Amt</TableCell>
+                        <TableCell align="right">Sell Amt</TableCell>
                         <TableCell align="right">Avg Pur Rate</TableCell>
                         <TableCell align="right">Avg Sell Rate</TableCell>
                         <TableCell align="right">Pur Bal Amt</TableCell>
@@ -44,7 +44,7 @@ function Summary() {
                             <TableCell align="right">{row.sellQty}</TableCell>
                             <TableCell align="right">{row.balanceQty}</TableCell>
                             <TableCell align="right">{row.purAmt}</TableCell>
-                            <TableCell align="right">{row.saleAmt}</TableCell>
+                            <TableCell align="right">{row.sellAmt}</TableCell>
                             <TableCell align="right">{row.avgPurRate}</TableCell>
                             <TableCell align="right">{row.avgSellRate}</TableCell>
                             <TableCell align="right">{row.purBalAmt}</TableCell>
@@ -60,7 +60,7 @@ function Summary() {
                     <TableCell align="right">{sum("sellQty")}</TableCell>
                     <TableCell align="right">{sum("balanceQty")}</TableCell>
                     <TableCell align="right">{sum("purAmt")?.toFixed(2)}</TableCell>
-                    <TableCell align="right">{sum("saleAmt")?.toFixed(2)}</TableCell>
+                    <TableCell align="right">{sum("sellAmt")?.toFixed(2)}</TableCell>
                     <TableCell align="right">{/* Usually avg rates don't sum */}</TableCell>
                     <TableCell align="right">{/* Usually avg rates don't sum */}</TableCell>
                     <TableCell align="right">{sum("purBalAmt")?.toFixed(2)}</TableCell>

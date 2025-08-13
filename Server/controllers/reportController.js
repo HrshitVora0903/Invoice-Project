@@ -2,60 +2,28 @@ import db from "../config/db.js"; // adjust the path if needed
 
 export const getSummary = (req, res) => {
     const sql = `
-        SELECT 
+       
+    select *, round(case when  balanceQty  > 0 then (balanceQty * avgPurRate) else 0 end,2) as purBalAmt 
+	,round(case when  balanceQty  > 0 then (balanceQty * avgSellRate) else 0 end,2) as sellBalAmt 
+
+    from (select * , (purQty - sellQty) as balanceQty
+        ,ROUND(case when purQty > 0 then (purAmt)/(purQty) else 0 end ,2 )as avgPurRate
+        ,ROUND(case when sellQty > 0 then (sellAmt)/(sellQty) else 0 end ,2 )as avgSellRate
+    
+        from ( SELECT 
             ii.itemName,
             SUM(CASE WHEN i.type = 'purchase' THEN ii.qty ELSE 0 END) AS purQty,
             SUM(CASE WHEN i.type = 'sell' THEN ii.qty ELSE 0 END) AS sellQty,
-            SUM(CASE WHEN i.type = 'purchase' THEN ii.qty ELSE 0 END) -
-            SUM(CASE WHEN i.type = 'sell' THEN ii.qty ELSE 0 END) AS balanceQty,
 
             SUM(CASE WHEN i.type = 'purchase' THEN ii.amt ELSE 0 END) AS purAmt,
-            SUM(CASE WHEN i.type = 'sell' THEN ii.amt ELSE 0 END) AS saleAmt,
+            SUM(CASE WHEN i.type = 'sell' THEN ii.amt ELSE 0 END) AS sellAmt
 
-            ROUND(
-                CASE 
-                    WHEN SUM(CASE WHEN i.type = 'purchase' THEN ii.qty ELSE 0 END) > 0 
-                    THEN SUM(CASE WHEN i.type = 'purchase' THEN ii.amt ELSE 0 END) /
-                         SUM(CASE WHEN i.type = 'purchase' THEN ii.qty ELSE 0 END)
-                    ELSE 0 
-                END, 2
-            ) AS avgPurRate,
-
-            ROUND(
-                CASE 
-                    WHEN SUM(CASE WHEN i.type = 'sell' THEN ii.qty ELSE 0 END) > 0 
-                    THEN SUM(CASE WHEN i.type = 'sell' THEN ii.amt ELSE 0 END) /
-                         SUM(CASE WHEN i.type = 'sell' THEN ii.qty ELSE 0 END)
-                    ELSE 0 
-                END, 2
-            ) AS avgSellRate,
-
-            ROUND(
-                (SUM(CASE WHEN i.type = 'purchase' THEN ii.qty ELSE 0 END) -
-                 SUM(CASE WHEN i.type = 'sell' THEN ii.qty ELSE 0 END)) *
-                 CASE 
-                    WHEN SUM(CASE WHEN i.type = 'purchase' THEN ii.qty ELSE 0 END) > 0 
-                    THEN SUM(CASE WHEN i.type = 'purchase' THEN ii.amt ELSE 0 END) /
-                         SUM(CASE WHEN i.type = 'purchase' THEN ii.qty ELSE 0 END)
-                    ELSE 0 
-                 END, 2
-            ) AS purBalAmt,
-
-            ROUND(
-                (SUM(CASE WHEN i.type = 'purchase' THEN ii.qty ELSE 0 END) -
-                 SUM(CASE WHEN i.type = 'sell' THEN ii.qty ELSE 0 END)) *
-                 CASE 
-                    WHEN SUM(CASE WHEN i.type = 'sell' THEN ii.qty ELSE 0 END) > 0 
-                    THEN SUM(CASE WHEN i.type = 'sell' THEN ii.amt ELSE 0 END) /
-                         SUM(CASE WHEN i.type = 'sell' THEN ii.qty ELSE 0 END)
-                    ELSE 0 
-                 END, 2
-            ) AS sellBalAmt
-
-        FROM invoices i
-        INNER JOIN invoice_items ii ON i.id = ii.invoiceId
-        GROUP BY ii.itemName
-        ORDER BY ii.itemName
+            from invoices i
+            INNER JOIN invoice_items ii ON i.id = ii.invoiceId
+            GROUP BY ii.itemName
+        ) as a
+    ) as b
+        ORDER BY b.itemName
     `;
 
     db.query(sql, (err, results) => {
